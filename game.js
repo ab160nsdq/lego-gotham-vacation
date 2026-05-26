@@ -29,11 +29,23 @@
   const PLAYER_HEIGHT = 48;
   const PLAYER_START_X = 80;
 
+  // Scoring + damage tuning
+  const HOTDOG_SCORE = 10;
+  const STRESS_PER_HIT = 20;
+  const STRESS_MAX = 100;
+  const INVINCIBILITY_DURATION = 1.0; // seconds
+
+  // Entity hitbox dimensions (match the drawn sprites)
+  const HOTDOG_WIDTH = 22;
+  const HOTDOG_HEIGHT = 10;
+  const SEAGULL_WIDTH = 24;
+  const SEAGULL_HEIGHT = 14;
+
   const game = {
     state: State.TITLE,
     keys: new Set(),
     score: 0,
-    health: 3,
+    stress: 0,
     elapsed: 0,
     lastFrame: 0,
   };
@@ -51,6 +63,8 @@
     facing: 1,
     isFlipping: false,
     flipAngle: 0,
+    isInvincible: false,
+    invulnTimer: 0,
   };
 
   const collectibles = [
@@ -96,11 +110,63 @@
     player.facing = 1;
     player.isFlipping = false;
     player.flipAngle = 0;
+    player.isInvincible = false;
+    player.invulnTimer = 0;
     player.y = GROUND_Y - getPlayerHeight();
   }
 
   function resetLevel() {
     for (const c of collectibles) c.collected = false;
+  }
+
+  function checkCollision(r1, r2) {
+    return (
+      r1.x < r2.x + r2.width &&
+      r1.x + r1.width > r2.x &&
+      r1.y < r2.y + r2.height &&
+      r1.y + r1.height > r2.y
+    );
+  }
+
+  function getPlayerRect() {
+    return {
+      x: player.x,
+      y: player.y,
+      width: player.width,
+      height: getPlayerHeight(),
+    };
+  }
+
+  function takeDamage() {
+    if (player.isInvincible) return;
+    game.stress = Math.min(STRESS_MAX, game.stress + STRESS_PER_HIT);
+    player.isInvincible = true;
+    player.invulnTimer = INVINCIBILITY_DURATION;
+    if (game.stress >= STRESS_MAX) {
+      game.state = State.GAMEOVER;
+    }
+  }
+
+  function handleCollisions() {
+    const playerRect = getPlayerRect();
+
+    for (const c of collectibles) {
+      if (c.collected) continue;
+      const cRect = { x: c.x, y: c.y, width: HOTDOG_WIDTH, height: HOTDOG_HEIGHT };
+      if (checkCollision(playerRect, cRect)) {
+        c.collected = true;
+        game.score += HOTDOG_SCORE;
+      }
+    }
+
+    if (player.isInvincible) return;
+    for (const e of enemies) {
+      const eRect = { x: e.x, y: e.y, width: SEAGULL_WIDTH, height: SEAGULL_HEIGHT };
+      if (checkCollision(playerRect, eRect)) {
+        takeDamage();
+        break;
+      }
+    }
   }
 
   function loadHighScores() {
@@ -125,7 +191,7 @@
   function startGame() {
     game.state = State.PLAYING;
     game.score = 0;
-    game.health = 3;
+    game.stress = 0;
     game.elapsed = 0;
     resetPlayer();
     resetLevel();
@@ -175,7 +241,7 @@
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
 
-  function updatePlayer() {
+  function updatePlayer(dt) {
     let dirX = 0;
     if (game.keys.has('ArrowLeft') || game.keys.has('KeyA')) dirX -= 1;
     if (game.keys.has('ArrowRight') || game.keys.has('KeyD')) dirX += 1;
@@ -212,6 +278,14 @@
     }
 
     if (player.x < 0) player.x = 0;
+
+    if (player.isInvincible) {
+      player.invulnTimer -= dt;
+      if (player.invulnTimer <= 0) {
+        player.isInvincible = false;
+        player.invulnTimer = 0;
+      }
+    }
   }
 
   function updateEnemies() {
@@ -233,8 +307,9 @@
         break;
       case State.PLAYING:
         game.elapsed += dt;
-        updatePlayer();
+        updatePlayer(dt);
         updateEnemies();
+        handleCollisions();
         break;
       case State.GAMEOVER:
       case State.VICTORY:
@@ -280,6 +355,10 @@
     const OUTLINE = '#f4f4f4';
 
     ctx.save();
+    if (player.isInvincible) {
+      // High-frequency alpha pulse for the invincibility flash.
+      ctx.globalAlpha = 0.35 + 0.4 * Math.abs(Math.sin(player.invulnTimer * 18));
+    }
     if (player.isFlipping) {
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -343,8 +422,8 @@
   function drawHotdog(c) {
     if (c.collected) return;
     const bob = Math.sin(game.elapsed * 3 + c.x * 0.01) * 2;
-    const w = 22;
-    const h = 10;
+    const w = HOTDOG_WIDTH;
+    const h = HOTDOG_HEIGHT;
     const x = Math.round(c.x);
     const y = Math.round(c.y + bob);
 
@@ -367,8 +446,7 @@
 
   function drawSeagull(e) {
     const flap = Math.sin(game.elapsed * 12 + e.x * 0.05) * 2;
-    const w = 24;
-    const h = 14;
+    const w = SEAGULL_WIDTH;
     const x = Math.round(e.x);
     const y = Math.round(e.y);
     const dir = e.vx >= 0 ? 1 : -1;
@@ -423,6 +501,41 @@
     }
   }
 
+  function drawHUD() {
+    // Score
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Score: ${game.score}`, 12, 22);
+
+    // Stress meter label
+    ctx.fillText('Vacation Stress', 12, 44);
+
+    // Stress bar
+    const barX = 12;
+    const barY = 50;
+    const barW = 180;
+    const barH = 12;
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    const ratio = Math.min(1, game.stress / STRESS_MAX);
+    let fillColor;
+    if (game.stress < 40) fillColor = '#55cc77';
+    else if (game.stress < 70) fillColor = '#ffcc33';
+    else fillColor = '#ff5555';
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(barX, barY, barW * ratio, barH);
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '11px monospace';
+    ctx.fillText(`${Math.round(game.stress)}%`, barX + barW + 8, barY + 10);
+  }
+
   function drawBoardwalkLevel() {
     // Sky
     ctx.fillStyle = '#1b1b3a';
@@ -457,12 +570,8 @@
     // Player
     drawPlayer();
 
-    // HUD
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '14px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Score: ${game.score}`, 12, 22);
-    ctx.fillText(`Health: ${'♥'.repeat(game.health)}`, 12, 42);
+    // HUD on top
+    drawHUD();
   }
 
   function drawEndScreen(title, color) {
@@ -539,6 +648,7 @@
     player,
     collectibles,
     enemies,
+    checkCollision,
     loadHighScores,
     saveHighScore,
   };
