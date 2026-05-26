@@ -12,6 +12,18 @@
   const titleBgImage = new Image();
   titleBgImage.src = 'assets/title-bg.png';
 
+  // Background music loop. Plays on first Space-from-TITLE press (which
+  // satisfies the browser's user-gesture requirement) and resets to 0
+  // whenever we return to the title screen.
+  const bgMusic = new Audio('assets/04 All of Us.mp3');
+  bgMusic.loop = true;
+  bgMusic.volume = 0.4;
+
+  function stopMusic() {
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
+  }
+
   const State = Object.freeze({
     TITLE: 'TITLE',
     PLAYING: 'PLAYING',
@@ -289,6 +301,7 @@
 
   function returnToTitle() {
     resetWorld();
+    stopMusic();
     game.state = State.TITLE;
   }
 
@@ -347,6 +360,7 @@
       if (e.code === 'Space') {
         e.preventDefault();
         startGame();
+        bgMusic.play().catch(err => console.log('Audio waiting for interaction:', err));
       }
       return;
     }
@@ -388,6 +402,7 @@
     if (game.state === State.HIGHSCORE) {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
+        stopMusic();
         game.state = State.TITLE;
       }
       return;
@@ -542,13 +557,10 @@
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
-    // Semi-translucent panel behind the text-heavy region so the
-    // premise + controls stay sharp over vibrant neon artwork.
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(50, 55, WIDTH - 100, 210);
-    ctx.strokeStyle = 'rgba(255, 204, 51, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(50, 55, WIDTH - 100, 210);
+    // Full-canvas dark mask so every text element pops with maximum
+    // contrast over the title artwork.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     // Drop-shadow every text run that follows so individual glyphs
     // also read cleanly against any backdrop.
