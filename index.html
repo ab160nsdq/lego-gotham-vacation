@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Batman: Boardwalk Bash</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <div id="menu-header-group" style="display: block;">
+        <h1 class="arcade-title">BATMAN: BOARDWALK BASH</h1>
+        <p class="menu-premise">BATMAN IS ON VACATION AT CONEY ISLAND, BUT THE PENGUIN HAS RIGGED THE BOARDWALK! COLLECT HOT DOGS TO STAY FUELED, THROW BATARANGS TO BLAST ANNOYING SEAGULLS, AND REACH THE CYCLONE ROLLER COASTER BEFORE YOUR VACATION STRESS HITS 100%!</p>
+      </div>
+      <canvas id="gameCanvas" width="800" height="400">
+        Your browser does not support the HTML5 canvas required to play
+        Boardwalk Bash.
+      </canvas>
+      <div id="menu-footer-group" style="display: block;">
+        <h2 class="controls-header">CONTROLS GUIDE</h2>
+        <div class="controls-list">
+          <div><span class="key-bind">[Left/Right or A/D]</span> — Run</div>
+          <div><span class="key-bind">[Space]</span> — Jump / Double-Jump Flip</div>
+          <div><span class="key-bind">[Down Arrow or S]</span> — Crouch &amp; Slide Under Obstacles</div>
+          <div><span class="key-bind">[X or J]</span> — Throw Batarang</div>
+          <div><span class="key-bind">[Esc]</span> — Return to Main Menu</div>
+        </div>
+        <div class="start-action-prompt">PRESS SPACE TO START</div>
+      </div>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
