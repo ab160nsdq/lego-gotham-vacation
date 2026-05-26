@@ -580,6 +580,7 @@
 
     ctx.fillStyle = '#f4f4f4';
     ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
     let py = 45;
     for (const line of premiseLines) {
       ctx.fillText(line, WIDTH / 2, py);
@@ -593,9 +594,7 @@
     ctx.fillText('CONTROLS GUIDE', WIDTH / 2, py);
     py += 22;
 
-    // Controls list — key in yellow, description in white, two-column
     ctx.font = '12px monospace';
-    ctx.textAlign = 'left';
     const controls = [
       ['Left/Right Arrows or A/D', 'Run'],
       ['Space', 'Jump / Double-Jump Flip'],
@@ -603,12 +602,14 @@
       ['X or J', 'Throw Batarang'],
       ['Esc', 'Return to Main Menu'],
     ];
-    const keyX = 160;
-    const descX = 400;
+    const keyX = 240;
+    const descX = 420;
     for (const [key, desc] of controls) {
       ctx.fillStyle = '#ffcc33';
+      ctx.textAlign = 'right';
       ctx.fillText(`[${key}]`, keyX, py);
       ctx.fillStyle = '#f4f4f4';
+      ctx.textAlign = 'left';
       ctx.fillText(`— ${desc}`, descX, py);
       py += 18;
     }
@@ -617,7 +618,7 @@
     ctx.fillStyle = '#ffffff';
     ctx.font = '16px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Press Space to Start', WIDTH / 2, HEIGHT - 38);
+    ctx.fillText('Press Space to Start', WIDTH / 2, 350);
 
     // Footer
     ctx.fillStyle = '#888888';

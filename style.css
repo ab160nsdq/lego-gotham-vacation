@@ -34,7 +34,8 @@ main {
 
 h1 {
   margin: 0 0 1.25rem;
-  font-size: 3.5rem;
+  font-size: 4.5rem !important;
+  line-height: 1.05;
   letter-spacing: 0.18em;
   color: var(--accent);
   text-transform: uppercase;
