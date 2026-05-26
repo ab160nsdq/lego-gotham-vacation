@@ -23,6 +23,7 @@
   const DOUBLE_JUMP_VY = -8.5;
   const MOVE_SPEED = 4;
   const CROUCH_FACTOR = 0.5;
+  const FLIP_SPEED = Math.PI / 8;
 
   const PLAYER_WIDTH = 32;
   const PLAYER_HEIGHT = 48;
@@ -48,7 +49,27 @@
     canDoubleJump: true,
     isCrouching: false,
     facing: 1,
+    isFlipping: false,
+    flipAngle: 0,
   };
+
+  const collectibles = [
+    { x: 100, y: 240, type: 'hotdog', collected: false },
+    { x: 180, y: 260, type: 'hotdog', collected: false },
+    { x: 260, y: 220, type: 'hotdog', collected: false },
+    { x: 340, y: 270, type: 'hotdog', collected: false },
+    { x: 420, y: 240, type: 'hotdog', collected: false },
+    { x: 500, y: 250, type: 'hotdog', collected: false },
+    { x: 580, y: 215, type: 'hotdog', collected: false },
+    { x: 660, y: 265, type: 'hotdog', collected: false },
+    { x: 720, y: 240, type: 'hotdog', collected: false },
+    { x: 770, y: 270, type: 'hotdog', collected: false },
+  ];
+
+  const enemies = [
+    { x: 300, y: 120, type: 'seagull', vx: 1.5, vx_bounds: { min: 200, max: 450 } },
+    { x: 650, y: 160, type: 'seagull', vx: -1.5, vx_bounds: { min: 500, max: 750 } },
+  ];
 
   function getPlayerHeight() {
     return player.isCrouching ? player.height * CROUCH_FACTOR : player.height;
@@ -73,7 +94,13 @@
     player.canDoubleJump = true;
     player.isCrouching = false;
     player.facing = 1;
+    player.isFlipping = false;
+    player.flipAngle = 0;
     player.y = GROUND_Y - getPlayerHeight();
+  }
+
+  function resetLevel() {
+    for (const c of collectibles) c.collected = false;
   }
 
   function loadHighScores() {
@@ -101,6 +128,7 @@
     game.health = 3;
     game.elapsed = 0;
     resetPlayer();
+    resetLevel();
   }
 
   function tryJump() {
@@ -112,6 +140,8 @@
     if (player.canDoubleJump) {
       player.vy = DOUBLE_JUMP_VY;
       player.canDoubleJump = false;
+      player.isFlipping = true;
+      player.flipAngle = 0;
     }
   }
 
@@ -159,6 +189,14 @@
     player.x += player.vx;
     player.y += player.vy;
 
+    if (player.isFlipping) {
+      player.flipAngle += FLIP_SPEED * player.facing;
+      if (Math.abs(player.flipAngle) >= Math.PI * 2) {
+        player.isFlipping = false;
+        player.flipAngle = 0;
+      }
+    }
+
     const h = getPlayerHeight();
     if (player.y + h >= GROUND_Y) {
       player.y = GROUND_Y - h;
@@ -166,12 +204,27 @@
       if (!player.isGrounded) {
         player.isGrounded = true;
         player.canDoubleJump = true;
+        player.isFlipping = false;
+        player.flipAngle = 0;
       }
     } else {
       player.isGrounded = false;
     }
 
     if (player.x < 0) player.x = 0;
+  }
+
+  function updateEnemies() {
+    for (const e of enemies) {
+      e.x += e.vx;
+      if (e.x >= e.vx_bounds.max) {
+        e.x = e.vx_bounds.max;
+        e.vx = -Math.abs(e.vx);
+      } else if (e.x <= e.vx_bounds.min) {
+        e.x = e.vx_bounds.min;
+        e.vx = Math.abs(e.vx);
+      }
+    }
   }
 
   function update(dt) {
@@ -181,6 +234,7 @@
       case State.PLAYING:
         game.elapsed += dt;
         updatePlayer();
+        updateEnemies();
         break;
       case State.GAMEOVER:
       case State.VICTORY:
@@ -223,6 +277,16 @@
     const TRUNKS = '#3aa8e8';
     const TRUNKS_SHADOW = '#2683b8';
     const EYES = '#f4f4f4';
+    const OUTLINE = '#f4f4f4';
+
+    ctx.save();
+    if (player.isFlipping) {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      ctx.translate(cx, cy);
+      ctx.rotate(player.flipAngle);
+      ctx.translate(-cx, -cy);
+    }
 
     // Sky-blue swim trunks (bottom 30%)
     ctx.fillStyle = TRUNKS;
@@ -230,21 +294,36 @@
     ctx.fillStyle = TRUNKS_SHADOW;
     ctx.fillRect(x, y + h * 0.70, w, h * 0.04);
 
-    // Black torso + cape block (28%–70%)
+    // Black torso + cape block (28–70%)
     ctx.fillStyle = BLACK;
     ctx.fillRect(x, y + h * 0.28, w, h * 0.42);
 
-    // Yellow utility belt sitting on top of the trunks
+    // Yellow utility belt with buckle
     ctx.fillStyle = BELT;
     ctx.fillRect(x, y + h * 0.62, w, h * 0.08);
     ctx.fillStyle = BELT_BUCKLE;
     ctx.fillRect(x + w * 0.42, y + h * 0.63, w * 0.16, h * 0.05);
 
-    // Cowl / head (top 30%, slightly narrower)
+    // Cowl + bat ears as a single outlined silhouette so the white stroke
+    // wraps the whole head shape and rides through the flip rotation cleanly.
+    const earH = h * 0.13;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.08, y + h * 0.30);
+    ctx.lineTo(x + w * 0.08, y);
+    ctx.lineTo(x + w * 0.14, y - earH);
+    ctx.lineTo(x + w * 0.30, y);
+    ctx.lineTo(x + w * 0.70, y);
+    ctx.lineTo(x + w * 0.86, y - earH);
+    ctx.lineTo(x + w * 0.92, y);
+    ctx.lineTo(x + w * 0.92, y + h * 0.30);
+    ctx.closePath();
     ctx.fillStyle = BLACK;
-    ctx.fillRect(x + w * 0.08, y, w * 0.84, h * 0.30);
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = OUTLINE;
+    ctx.stroke();
 
-    // White eye slits
+    // Eye slits (drawn after the outline so they sit on top of the cowl)
     ctx.fillStyle = EYES;
     const eyeY = y + h * 0.14;
     const eyeH = Math.max(2, h * 0.05);
@@ -256,6 +335,91 @@
       ctx.fillStyle = BLACK;
       ctx.fillRect(x + w * 0.15, y + h * 0.95, w * 0.25, h * 0.05);
       ctx.fillRect(x + w * 0.60, y + h * 0.95, w * 0.25, h * 0.05);
+    }
+
+    ctx.restore();
+  }
+
+  function drawHotdog(c) {
+    if (c.collected) return;
+    const bob = Math.sin(game.elapsed * 3 + c.x * 0.01) * 2;
+    const w = 22;
+    const h = 10;
+    const x = Math.round(c.x);
+    const y = Math.round(c.y + bob);
+
+    // Bun top
+    ctx.fillStyle = '#d4a064';
+    ctx.fillRect(x, y, w, h * 0.4);
+    // Sausage
+    ctx.fillStyle = '#a83a1f';
+    ctx.fillRect(x + 1, y + h * 0.35, w - 2, h * 0.35);
+    // Mustard streak
+    ctx.fillStyle = '#ffd633';
+    ctx.fillRect(x + 2, y + h * 0.48, w - 4, h * 0.1);
+    // Bun bottom
+    ctx.fillStyle = '#d4a064';
+    ctx.fillRect(x, y + h * 0.7, w, h * 0.3);
+    // Bun seam highlight
+    ctx.fillStyle = '#b8854a';
+    ctx.fillRect(x, y + h * 0.32, w, 1);
+  }
+
+  function drawSeagull(e) {
+    const flap = Math.sin(game.elapsed * 12 + e.x * 0.05) * 2;
+    const w = 24;
+    const h = 14;
+    const x = Math.round(e.x);
+    const y = Math.round(e.y);
+    const dir = e.vx >= 0 ? 1 : -1;
+
+    // Body
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(x + 7, y + 5, 10, 6);
+    ctx.fillStyle = '#d8d8d8';
+    ctx.fillRect(x + 7, y + 9, 10, 2);
+
+    // Wings — animated flap via vertical offset on outer tips
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 4 - flap);
+    ctx.lineTo(x + 8, y + 7);
+    ctx.moveTo(x + w, y + 4 - flap);
+    ctx.lineTo(x + 16, y + 7);
+    ctx.stroke();
+
+    // Beak
+    ctx.fillStyle = '#ff9933';
+    if (dir > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + 17, y + 6);
+      ctx.lineTo(x + 22, y + 8);
+      ctx.lineTo(x + 17, y + 9);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + 7, y + 6);
+      ctx.lineTo(x + 2, y + 8);
+      ctx.lineTo(x + 7, y + 9);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Eye
+    ctx.fillStyle = '#101015';
+    const eyeX = dir > 0 ? x + 14 : x + 8;
+    ctx.fillRect(eyeX, y + 6, 2, 2);
+  }
+
+  function drawCollectibles() {
+    for (const c of collectibles) drawHotdog(c);
+  }
+
+  function drawEnemies() {
+    for (const e of enemies) {
+      if (e.type === 'seagull') drawSeagull(e);
     }
   }
 
@@ -286,6 +450,11 @@
       ctx.stroke();
     }
 
+    // Level entities
+    drawCollectibles();
+    drawEnemies();
+
+    // Player
     drawPlayer();
 
     // HUD
@@ -364,5 +533,13 @@
 
   requestAnimationFrame(loop);
 
-  window.BoardwalkBash = { State, game, player, loadHighScores, saveHighScore };
+  window.BoardwalkBash = {
+    State,
+    game,
+    player,
+    collectibles,
+    enemies,
+    loadHighScores,
+    saveHighScore,
+  };
 })();
