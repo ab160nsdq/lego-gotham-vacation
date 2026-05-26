@@ -6,6 +6,12 @@
   const WIDTH = canvas.width;
   const HEIGHT = canvas.height;
 
+  // Pre-load title-screen backdrop. `complete && naturalWidth > 0` is the
+  // defensive check we use at draw time — `complete` alone flips true on
+  // load errors too, which would let `drawImage` throw on a broken file.
+  const titleBgImage = new Image();
+  titleBgImage.src = 'assets/title-bg.png';
+
   const State = Object.freeze({
     TITLE: 'TITLE',
     PLAYING: 'PLAYING',
@@ -527,7 +533,30 @@
   }
 
   function drawTitle() {
-    clearScreen();
+    // High-fidelity menu graphic, with a dark fallback if the image
+    // hasn't loaded or 404'd.
+    if (titleBgImage.complete && titleBgImage.naturalWidth > 0) {
+      ctx.drawImage(titleBgImage, 0, 0, WIDTH, HEIGHT);
+    } else {
+      ctx.fillStyle = '#0a0b10';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+
+    // Semi-translucent panel behind the text-heavy region so the
+    // premise + controls stay sharp over vibrant neon artwork.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(50, 55, WIDTH - 100, 210);
+    ctx.strokeStyle = 'rgba(255, 204, 51, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(50, 55, WIDTH - 100, 210);
+
+    // Drop-shadow every text run that follows so individual glyphs
+    // also read cleanly against any backdrop.
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
 
     // Title
     ctx.fillStyle = '#ffcc33';
@@ -588,6 +617,8 @@
     ctx.fillStyle = '#888888';
     ctx.font = '11px monospace';
     ctx.fillText('Coney Island — Summer Weekend', WIDTH / 2, HEIGHT - 18);
+
+    ctx.restore();
   }
 
   function drawPlayer() {

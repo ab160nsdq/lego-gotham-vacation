@@ -2,110 +2,156 @@
 
 **Last updated:** 2026-05-26
 **Branch:** `feature/core-game-loop`
-**Status:** Collision + stress meter committed (`9c027f9`). **Side-scrolling
-3000 px world, expanded level (25 hotdogs / 6 seagulls), Ferris Wheel +
-Penguin boss-zone backdrop, and `VICTORY` trigger at `x ≥ 2800` live in
-working tree** (uncommitted). The level is end-to-end winnable.
+**Status:** ✅ **Feature work complete on the branch.** Final slice
+(title premise + Escape routing + batarangs + initials entry on
+GAMEOVER/VICTORY) committed as `b73c458`. Working tree clean except for
+this HANDOFF refresh, which rolls forward into the next session/PR.
+
+The game is end-to-end playable: TITLE → PLAYING → GAMEOVER or VICTORY
+→ initials-entry → HIGHSCORE → back to TITLE. Local build passes
+`node --check game.js` and `scripts/verify-build.sh` (**11/11**).
 
 ## Commit log
 
+- `b73c458` — *Feat: Implement title screen premise text, canvas
+  batarang projectiles, seagull destruction, and Escape key menu
+  routing* — 2 files / +582 −151 lines. Final feature slice (see
+  details below).
 - `9c027f9` — *Feat: Implement AABB collision detection, invincibility
-  frames, and dynamic three-color HUD stress meter* —
-  2 files / +193 −81 lines.
+  frames, and dynamic three-color HUD stress meter* — 2 files /
+  +193 −81 lines.
 - `ccd683b` — *Feat: Implement double-jump flip matrix, player outline
-  stroke, bobbing hotdogs, and patrolling seagulls* —
-  2 files / +247 −50 lines.
+  stroke, bobbing hotdogs, and patrolling seagulls* — 2 files /
+  +247 −50 lines.
 - `0d132d0` — *Feat: Implement gravity physics, double-jump tracking,
   crouching states, and geometric player sprite rendering* —
   3 files / +229 −58 lines.
 - `4cb7e25` — *Feat: Initialize 5-state machine loop, canvas rendering
   context, and keyboard input listeners* — 8 files / +579 lines.
+- `d8a41b0` — *Initial commit: scaffold project structure*.
 
-## Just landed this turn — Agent 2 (Physics) + Agent 4 (Level Designer) + Agent 3 (UI)
+## Just landed this turn — Agent 3 (UI) + Agent 2 (Physics) + Agent 1 (Git)
 
-### Side-scrolling camera (Agent 2)
+### Title screen narrative + controls (Agent 3)
 
-- New world constants: `LEVEL_WIDTH = 3000`, `LEVEL_END_X = 2800`,
-  `CAMERA_MAX = LEVEL_WIDTH - WIDTH = 2200`.
-- New `camera = { x: 0 }` — exported on `window.BoardwalkBash.camera`.
-- New `updateCamera()` clamps `camera.x` to
-  `clamp(player.x - WIDTH/2, 0, CAMERA_MAX)` — Batman stays at the
-  screen center until camera hits either bound.
-- All world-positioned draws subtract `camera.x` from their screen x:
-  `drawPlayer()`, `drawHotdog()`, `drawSeagull()`, `drawFerrisWheel()`,
-  `drawPenguin()`. Boardwalk planks tile via `camera.x % 40` so they
-  scroll past the screen.
-- HUD remains screen-fixed (`drawHUD()` does **not** use `camera.x`).
-- Sky and ocean strip stay static (parallax = 0) — gives the level
-  a free poor-man's depth effect.
-- `startGame()` resets `camera.x = 0`.
-- Off-screen culling: hotdogs / seagulls / Ferris / Penguin early-return
-  if their screen x is fully outside the canvas.
+- `drawTitle()` rewritten as a full main-menu layout:
+  - Bold yellow title (`26 px`) at the top.
+  - Auto-wrapped white **premise paragraph** (`wrapText()` helper,
+    60-char wrap → 4 lines) telling the Coney Island / Penguin /
+    hotdogs / batarangs / Cyclone setup.
+  - Yellow **CONTROLS GUIDE** header.
+  - Two-column controls panel with the key (yellow, bracketed) on the
+    left and an em-dash + description (white) on the right:
+    `Left/Right Arrows or A/D`, `Space`, `Down Arrow or S`, `X or J`,
+    `Esc`.
+  - "Press Space to Start" prompt + Coney Island footer.
 
-### Expanded level (Agent 4)
+### Escape → Main Menu (Agent 3)
 
-- `collectibles[]` grew from 10 → **25 hotdogs**, distributed across
-  four sections of the boardwalk (`x = 100 … 2680`, y bobbing between
-  `200` and `270`).
-- `enemies[]` grew from 2 → **6 seagulls**, patrolling staggered
-  segments from `x = 200` through `x = 2700` at varying `y` (110–170)
-  and `vx` magnitudes (1.3–1.8).
+- `onKeyDown` routes by state. In `PLAYING`, `Escape` calls
+  `returnToTitle()`, which `resetWorld()`s (score, stress, elapsed,
+  initials buffer, camera, player, collectibles, enemies, batarangs)
+  and switches state to `TITLE` in a single frame.
+- `resetLevel()` now mutates the live arrays in-place via factory
+  functions (`createInitialCollectibles()` /
+  `createInitialEnemies()`), so seagulls killed by batarangs (and
+  hotdogs eaten) come back on the next run.
 
-### Ferris Wheel + Penguin boss zone (Agent 4 + Agent 3)
+### Batarangs (Agent 2)
 
-- `drawFerrisWheel()` paints a stylized purple Ferris Wheel anchored at
-  world `(2900, 180)`, radius `110`: two-tone purple ring, blocky
-  central hub, eight rotating spokes (driven by `game.elapsed * 0.3`)
-  with alternating yellow/pink/green/blue cars outlined in black, and a
-  pole running down to the boardwalk.
-- `drawPenguin()` paints a 40×52 blocky Penguin boss at world
-  `x = 2820`: top hat with purple band, white belly inside a black
-  body block, orange beak pointing left at incoming Batman, sinister
-  red eye, yellow flipper arms + feet.
-- HUD gained a right-aligned `Cyclone in N ft` readout so the player
-  can see how close they are to victory.
+- New global `batarangs = []` (exported on `window.BoardwalkBash`).
+- `X` or `J` in PLAYING calls `spawnBatarang()`, which pushes a
+  projectile at `player center` flying `BATARANG_SPEED * facing`
+  (`±8 px/frame`). Per-throw cooldown `BATARANG_COOLDOWN = 0.18 s`
+  and `e.repeat` guard prevent autorepeat spam.
+- `updateBatarangs()` advances each projectile, tracks
+  `b.distance`, accumulates `b.spin`, and despawns once
+  `b.distance >= BATARANG_RANGE (300)` or it leaves the camera view.
+- `drawBatarang()` paints a bat-symbol silhouette path (two wing tips
+  + center notch) with a yellow outline, spinning continuously via
+  `ctx.translate / rotate`.
+- `handleBatarangCollisions()` walks `batarangs × enemies` (both
+  iterated backward), uses the existing `checkCollision()` AABB to
+  detect impact, and on hit **removes both the batarang and the
+  seagull from their arrays** and awards `SEAGULL_HIT_SCORE = 50`.
 
-### Victory trigger (Agent 3)
+### Leaderboard initials entry (Agent 3 — required for rubric)
 
-- In the `PLAYING` update branch, after movement integration:
-  `if (player.x >= LEVEL_END_X) game.state = State.VICTORY` (with a
-  `break` so no further collisions land that frame).
-- Victory end-screen text changed from generic "YOU WIN!" to
-  **"YOU REACHED THE CYCLONE!"**.
+- New `game.initialsEntry` state (string, length 0–3). Reset on every
+  `resetWorld()`.
+- `drawEndScreen()` now renders three 50×60 slot boxes centered under
+  "Enter your initials for the leaderboard:". The active slot shows
+  a blinking yellow caret (`Date.now()` driven), filled slots show
+  the letter in bold 34 px.
+- Key routing in `GAMEOVER` / `VICTORY`:
+  - `A`–`Z` append to `initialsEntry` (capped at 3).
+  - `Backspace` deletes the last letter.
+  - `Enter` or `Space` calls
+    `submitInitialsAndShowHighScores()` → pads to 3 with `'A'`
+    (blank → `AAA`), `saveHighScore()`, switches to `HIGHSCORE`.
+- `saveHighScore()` / `loadHighScores()` already wrote/read
+  `localStorage[boardwalkBashHighScores]`; the entry UI now closes
+  the loop so the rubric's "input and edit 3-character initials"
+  requirement is satisfied end-to-end.
 
-## Open for next agent
+## Assignment rubric — final check
 
-- **Agent 1 (Git)** — commit current working tree, then push branch
-  and open the PR into `main`.
-- **Agent 3 (UI)** — 3-letter initials-entry UI on the
-  `GAMEOVER / VICTORY → HIGHSCORE` flow so the final score actually
-  lands on the `localStorage` leaderboard.
-- **Agent 4 (Design)** — more hazard variety (beach balls, bumper
-  cars), Batarang power-up, optional mid-level checkpoints, Penguin
-  attack pattern instead of a static greeter.
-- **Agent 5 (QA)** — full manual run-through: speedrun left-to-right
-  without taking damage, confirm camera doesn't overshoot at `x = 0`
-  or past `x = 2200`, confirm `VICTORY` fires exactly on first frame
-  `player.x ≥ 2800`.
+| Rubric requirement                                | Status |
+| ------------------------------------------------- | ------ |
+| Public GitHub repo                                | local repo ready; **needs `git push` + remote** |
+| Initial commit on `main`                          | ✅ `d8a41b0` |
+| Feature work on a separate branch + ≥1 PR         | ✅ branch `feature/core-game-loop` (5 feature commits); **needs `gh pr create` / merge** |
+| No cloud / external APIs for gameplay             | ✅ canvas + localStorage only |
+| 2-D side-scroller                                 | ✅ camera-scrolled 3000 px level |
+| "American Weekend Vacation" theme                 | ✅ Coney Island boardwalk |
+| ≥ 1 fully playable level                          | ✅ left edge → Cyclone |
+| Protagonist with backstory + moves                | ✅ vacation-mode LEGO Batman (see [PROJECT.md](PROJECT.md)); run / jump / double-jump flip / crouch / batarang |
+| Score system                                      | ✅ hotdog +10, seagull kill +50 |
+| Damage system                                     | ✅ Vacation Stress Meter (+20% per seagull, 1 s invuln flash) |
+| Endgame trigger                                   | ✅ `VICTORY` at `player.x ≥ 2800`, `GAMEOVER` at `stress ≥ 100` |
+| Title screen                                      | ✅ branding + premise + controls + start prompt |
+| Gameplay HUD                                      | ✅ score + Vacation Stress bar + Cyclone distance + Esc hint |
+| High Scores screen                                | ✅ top 10 from localStorage |
+| localStorage persistence                          | ✅ `boardwalkBashHighScores` JSON |
+| 3-character initials input                        | ✅ on GAMEOVER / VICTORY end-screen |
+
+## Open for next agent (post-merge polish)
+
+- **Agent 1 (Git)** — push branch, open PR into `main`, merge. After
+  merge, capture the gameplay + repo screenshots called for in the
+  rubric.
+- **Agent 4 (Design)** — additional hazard variety (beach balls,
+  bumper cars), Batarang power-ups, an actual Penguin attack pattern
+  instead of a static greeter, mid-level checkpoints.
+- **Agent 5 (QA)** — full manual run-through end-to-end: speedrun
+  hot-dog-only, kill-all-seagulls run, deliberate 100%-stress run,
+  confirm `Esc` returns to title from any position, confirm
+  leaderboard persists across page reloads, confirm camera doesn't
+  overshoot at `x = 0` or past `x = 2200`.
+- **Agent 2 (Physics)** — optional parallax background, sweeping
+  collision so high-vy frames can't tunnel through thin hitboxes
+  (not currently a problem given player AABB ≥ 24 px tall, but worth
+  having if hazards shrink).
 
 ## Verification
 
 ```bash
 python3 -m http.server 8000   # if not already up
-bash scripts/verify-build.sh  # static checks
+bash scripts/verify-build.sh  # 11/11 PASS
+node --check game.js          # OK
 ```
 
-Manual playtest: open `http://127.0.0.1:8000/`, hit Space, then run
-Batman to the right. Expected:
+Manual playtest checklist (open `http://127.0.0.1:8000/`):
 
-- Camera locks Batman at screen center after passing `x = 400`.
-- Camera stops moving once it reaches `x = 2200`; Batman walks toward
-  the right edge from there.
-- 25 hotdogs vanish on touch (+10 each); 6 seagulls patrol staggered
-  segments.
-- Approaching `x ≈ 2800` reveals the rotating purple Ferris Wheel and
-  top-hatted Penguin.
-- Crossing `x = 2800` immediately swaps to the
-  **"YOU REACHED THE CYCLONE!"** victory screen.
-- Stress meter hitting 100% before reaching the Cyclone drops to
-  GAME OVER.
+- Title screen shows premise paragraph + 5-line controls guide.
+- `Space` starts the game; Batman runs / jumps / double-flips / crouches.
+- `X` or `J` flings a spinning bat-shaped projectile in the facing
+  direction; hitting a seagull removes both and scores +50.
+- Hotdogs collected on touch (+10); stress fills at +20 % per seagull
+  body-check with a ~1 s alpha-flash invuln window.
+- Crossing `player.x = 2800` past the Ferris Wheel + Penguin triggers
+  the "YOU REACHED THE CYCLONE!" victory screen.
+- End screen accepts 3-letter initials; Enter/Space submits → score
+  lands in the localStorage leaderboard → HIGHSCORE screen.
+- `Esc` during play returns instantly to the title, world fully
+  re-initialized for the next run.
