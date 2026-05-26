@@ -75,3 +75,77 @@ kbd {
   font-family: inherit;
   font-size: 0.85em;
 }
+
+/* === Menu DOM groups (toggled by syncMenuVisibility in game.js) === */
+
+#menu-header-group,
+#menu-footer-group {
+  width: 100%;
+  max-width: 880px;
+  text-align: center;
+}
+
+.arcade-title {
+  font-size: 4.5rem !important;
+  text-align: center;
+}
+
+.menu-premise {
+  max-width: 800px;
+  margin: 15px auto;
+  padding: 0 1rem;
+  color: var(--fg);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+#menu-footer-group {
+  margin-top: 1.25rem;
+}
+
+.controls-header {
+  margin: 0.5rem 0 1rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+  text-shadow: 0 0 6px var(--accent-glow), 0 2px 0 #000;
+}
+
+.controls-list {
+  display: inline-block;
+  margin: 0 auto;
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.controls-list > div {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  white-space: nowrap;
+}
+
+.key-bind {
+  color: var(--accent);
+  flex: 0 0 220px;
+  text-align: left;
+}
+
+.start-action-prompt {
+  margin-top: 1.25rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.22em;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.55), 0 2px 0 #000;
+  animation: blink-prompt 1.4s ease-in-out infinite;
+}
+
+@keyframes blink-prompt {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}

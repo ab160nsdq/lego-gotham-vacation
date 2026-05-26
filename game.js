@@ -529,103 +529,17 @@
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
-  function wrapText(text, maxChars) {
-    const words = text.split(/\s+/);
-    const lines = [];
-    let current = '';
-    for (const w of words) {
-      if (current.length === 0) {
-        current = w;
-      } else if (current.length + 1 + w.length <= maxChars) {
-        current += ' ' + w;
-      } else {
-        lines.push(current);
-        current = w;
-      }
-    }
-    if (current.length > 0) lines.push(current);
-    return lines;
-  }
-
   function drawTitle() {
-    // High-fidelity menu graphic, with a dark fallback if the image
-    // hasn't loaded or 404'd.
+    // Canvas paints the background art only. The menu title, premise,
+    // controls guide, and start prompt live in real DOM elements
+    // (#menu-header-group / #menu-footer-group) toggled by
+    // syncMenuVisibility() so they pick up real arcade typography.
     if (titleBgImage.complete && titleBgImage.naturalWidth > 0) {
       ctx.drawImage(titleBgImage, 0, 0, WIDTH, HEIGHT);
     } else {
       ctx.fillStyle = '#0a0b10';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
-
-    // Full-canvas dark mask so every text element pops with maximum
-    // contrast over the title artwork.
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    // Drop-shadow every text run that follows so individual glyphs
-    // also read cleanly against any backdrop.
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    // Premise paragraph
-    const premise =
-      'BATMAN IS ON VACATION AT CONEY ISLAND, BUT THE PENGUIN HAS RIGGED ' +
-      'THE BOARDWALK! COLLECT HOT DOGS TO STAY FUELED, THROW BATARANGS TO ' +
-      'BLAST ANNOYING SEAGULLS, AND REACH THE CYCLONE ROLLER COASTER ' +
-      'BEFORE YOUR VACATION STRESS HITS 100%!';
-    const premiseLines = wrapText(premise, 60);
-
-    ctx.fillStyle = '#f4f4f4';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    let py = 45;
-    for (const line of premiseLines) {
-      ctx.fillText(line, WIDTH / 2, py);
-      py += 16;
-    }
-
-    // Controls header
-    py += 14;
-    ctx.fillStyle = '#ffcc33';
-    ctx.font = 'bold 14px monospace';
-    ctx.fillText('CONTROLS GUIDE', WIDTH / 2, py);
-    py += 22;
-
-    ctx.font = '12px monospace';
-    const controls = [
-      ['Left/Right Arrows or A/D', 'Run'],
-      ['Space', 'Jump / Double-Jump Flip'],
-      ['Down Arrow or S', 'Crouch & Slide Under Obstacles'],
-      ['X or J', 'Throw Batarang'],
-      ['Esc', 'Return to Main Menu'],
-    ];
-    const keyX = 240;
-    const descX = 420;
-    for (const [key, desc] of controls) {
-      ctx.fillStyle = '#ffcc33';
-      ctx.textAlign = 'right';
-      ctx.fillText(`[${key}]`, keyX, py);
-      ctx.fillStyle = '#f4f4f4';
-      ctx.textAlign = 'left';
-      ctx.fillText(`— ${desc}`, descX, py);
-      py += 18;
-    }
-
-    // Start prompt
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('Press Space to Start', WIDTH / 2, 350);
-
-    // Footer
-    ctx.fillStyle = '#888888';
-    ctx.font = '11px monospace';
-    ctx.fillText('Coney Island — Summer Weekend', WIDTH / 2, HEIGHT - 18);
-
-    ctx.restore();
   }
 
   function drawPlayer() {
@@ -1063,7 +977,22 @@
     ctx.fillText('Press Space to return to Title', WIDTH / 2, HEIGHT - 20);
   }
 
+  // Toggle the DOM menu groups based on game.state. Only writes to the
+  // DOM when the visibility actually changes — cheap to call every frame.
+  let lastMenuVisibility = null;
+  function syncMenuVisibility() {
+    const shouldShow = game.state === State.TITLE;
+    if (shouldShow === lastMenuVisibility) return;
+    lastMenuVisibility = shouldShow;
+    const display = shouldShow ? 'block' : 'none';
+    const header = document.getElementById('menu-header-group');
+    const footer = document.getElementById('menu-footer-group');
+    if (header) header.style.display = display;
+    if (footer) footer.style.display = display;
+  }
+
   function render() {
+    syncMenuVisibility();
     switch (game.state) {
       case State.TITLE:
         drawTitle();
