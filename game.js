@@ -570,12 +570,6 @@
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
 
-    // Title
-    ctx.fillStyle = '#ffcc33';
-    ctx.font = 'bold 26px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('LEGO Batman: Boardwalk Bash', WIDTH / 2, 38);
-
     // Premise paragraph
     const premise =
       'BATMAN IS ON VACATION AT CONEY ISLAND, BUT THE PENGUIN HAS RIGGED ' +
