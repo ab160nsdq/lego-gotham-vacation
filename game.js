@@ -580,7 +580,7 @@
 
     ctx.fillStyle = '#f4f4f4';
     ctx.font = '12px monospace';
-    let py = 70;
+    let py = 45;
     for (const line of premiseLines) {
       ctx.fillText(line, WIDTH / 2, py);
       py += 16;
